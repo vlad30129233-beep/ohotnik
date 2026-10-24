@@ -1,44 +1,40 @@
-name: Build Android APK
-on:
-  push:
-    branches: [ "main", "master" ]
-  workflow_dispatch:
+Name: Build Android APK
 
-jobs:
-  build:
-    name: Assemble Standalone APK
-    runs-on: ubuntu-latest
+On:
+  Push:
+    Branches: [ «main», «master» ]
+  Workflow_dispatch:
 
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+Jobs:
+  Build:
+    Name: Generate APK
+    Runs-on: ubuntu-latest
 
-      - name: Set up Java 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
+    Steps:
+      - name: Checkout Code
+        Uses: actions/checkout@v4
 
-      - name: Accept Android SDK Licenses
-        run: |
-          yes | sdkmanager --licenses || true
+      - name: Setup Java 17
+        Uses: actions/setup-java@v4
+        With:
+          Distribution: 'temurin'
+          Java-version: '17'
 
-      - name: Generate Android Project Files
-        run: |
-          mkdir -p Ohotnik/app/src/main/assets
-          mkdir -p Ohotnik/app/src/main/java/ru/repin/ohotnik
-          mkdir -p Ohotnik/app/src/main/res/values
+      - name: Initialize Android Wrapper Project
+        Run: |
+          # Создаем структуру проекта
+          Mkdir -p app/src/main/assets app/src/main/res/values app/src/main/java/ru/repin/ohotnik
 
-          # Перенос готового HTML интерфейса
-          cp index.html Ohotnik/app/src/main/assets/index.html
+          # Копируем наш файл приложения
+          Cp index.html app/src/main/assets/index.html
 
-          # settings.gradle
-          cat << 'EOF' > Ohotnik/settings.gradle
+          # Настройки репозиториев
+          Cat << 'EOF' > settings.gradle
           pluginManagement {
               repositories {
+                  gradlePluginPortal()
                   google()
                   mavenCentral()
-                  gradlePluginPortal()
               }
           }
           dependencyResolutionManagement {
@@ -48,188 +44,119 @@ jobs:
                   mavenCentral()
               }
           }
-          rootProject.name = "OhotnikKuzbass"
+          rootProject.name = «OhotnikKuzbass»
           include ':app'
           EOF
 
-          # build.gradle (корень)
-          cat << 'EOF' > Ohotnik/build.gradle
-          plugins {
-              id 'com.android.application' version '8.2.2' apply false
+          # Корневой build.gradle
+          Cat << 'EOF' > build.gradle
+          Plugins {
+              Id 'com.android.application' version '8.1.4' apply false
           }
           EOF
 
-          # app/build.gradle
-          cat << 'EOF' > Ohotnik/app/build.gradle
-          plugins {
-              id 'com.android.application'
+          # Сборка модуля app
+          Cat << 'EOF' > app/build.gradle
+          Plugins {
+              Id 'com.android.application'
           }
-          android {
-              namespace 'ru.repin.ohotnik'
+          Android {
+              Namespace 'ru.repin.ohotnik'
               compileSdk 34
               defaultConfig {
-                  applicationId "ru.repin.ohotnik"
+                  applicationId «ru.repin.ohotnik»
                   minSdk 24
                   targetSdk 34
                   versionCode 1
-                  versionName "1.0.0"
+                  versionName «1.0»
               }
               buildTypes {
-                  release { minifyEnabled false }
-                  debug { debuggable true }
+                  release {
+                      minifyEnabled false
+                  }
               }
               compileOptions {
                   sourceCompatibility JavaVersion.VERSION_17
                   targetCompatibility JavaVersion.VERSION_17
               }
           }
-          dependencies {
-              implementation 'androidx.appcompat:appcompat:1.6.1'
-              implementation 'androidx.webkit:webkit:1.10.0'
+          Dependencies {
+              Implementation 'androidx.appcompat:appcompat:1.6.1'
+              Implementation 'androidx.webkit:webkit:1.8.0'
           }
           EOF
 
-          # app/src/main/AndroidManifest.xml
-          cat << 'EOF' > Ohotnik/app/src/main/AndroidManifest.xml
-          <?xml version="1.0" encoding="utf-8"?>
-          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <uses-permission android:name="android.permission.INTERNET" />
-              <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-              <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+          # Манифест с разрешениями на геолокацию
+          Cat << 'EOF' > app/src/main/AndroidManifest.xml
+          <?xml version=»1.0» encoding=»utf-8»?>
+          <manifest xmlns:android=»http://schemas.android.com/apk/res/android»>
+              <uses-permission android:name=»android.permission.INTERNET» />
+              <uses-permission android:name=»android.permission.ACCESS_FINE_LOCATION» />
+              <uses-permission android:name=»android.permission.ACCESS_COARSE_LOCATION» />
               <application
-                  android:allowBackup="true"
-                  android:icon="@android:drawable/ic_menu_compass"
-                  android:label="Ohotnik Kuzbassa"
-                  android:theme="@style/Theme.OhotnikKuzbass">
+                  Android:allowBackup=»true»
+                  Android:label=»Охотник Кузбасса»
+                  Android:theme=»@style/Theme.AppCompat.NoActionBar»>
                   <activity
-                      android:name=".MainActivity"
-                      android:exported="true"
-                      android:configChanges="orientation|screenSize|keyboardHidden">
+                      Android:name=».MainActivity»
+                      Android:exported=»true»>
                       <intent-filter>
-                          <action android:name="android.intent.action.MAIN" />
-                          <category android:name="android.intent.category.LAUNCHER" />
+                          <action android:name=»android.intent.action.MAIN» />
+                          <category android:name=»android.intent.category.LAUNCHER» />
                       </intent-filter>
                   </activity>
               </application>
           </manifest>
           EOF
 
-          # app/src/main/res/values/styles.xml
-          cat << 'EOF' > Ohotnik/app/src/main/res/values/styles.xml
-          <resources>
-              <style name="Theme.OhotnikKuzbass" parent="Theme.AppCompat.NoActionBar">
-                  <item name="android:statusBarColor">#0a0d0c</item>
-                  <item name="android:navigationBarColor">#0a0d0c</item>
-                  <item name="android:windowBackground">#0a0d0c</item>
-              </style>
-          </resources>
-          EOF
+          # Java Activity
+          Cat << 'EOF' > app/src/main/java/ru/repin/ohotnik/MainActivity.java
+          Package ru.repin.ohotnik;
+          Import android.os.Bundle;
+          Import android.webkit.WebChromeClient;
+          Import android.webkit.WebSettings;
+          Import android.webkit.WebView;
+          Import android.webkit.WebViewClient;
+          Import androidx.appcompat.app.AppCompatActivity;
 
-          # app/src/main/java/ru/repin/ohotnik/MainActivity.java
-          cat << 'EOF' > Ohotnik/app/src/main/java/ru/repin/ohotnik/MainActivity.java
-          package ru.repin.ohotnik;
-
-          import android.Manifest;
-          import android.annotation.SuppressLint;
-          import android.content.Intent;
-          import android.content.pm.PackageManager;
-          import android.net.Uri;
-          import android.os.Bundle;
-          import android.webkit.GeolocationPermissions;
-          import android.webkit.WebChromeClient;
-          import android.webkit.WebResourceRequest;
-          import android.webkit.WebSettings;
-          import android.webkit.WebView;
-          import android.webkit.WebViewClient;
-          import androidx.annotation.NonNull;
-          import androidx.appcompat.app.AppCompatActivity;
-          import androidx.core.app.ActivityCompat;
-          import androidx.core.content.ContextCompat;
-
-          public class MainActivity extends AppCompatActivity {
-              private WebView webView;
-              private static final int LOCATION_REQ = 101;
-              private GeolocationPermissions.Callback geoCallback;
-              private String geoOrigin;
-
-              @SuppressLint("SetJavaScriptEnabled")
+          Public class MainActivity extends AppCompatActivity {
+              Private WebView myWebView;
               @Override
-              protected void onCreate(Bundle savedInstanceState) {
-                  super.onCreate(savedInstanceState);
-                  webView = new WebView(this);
-                  setContentView(webView);
-
-                  WebSettings ws = webView.getSettings();
-                  ws.setJavaScriptEnabled(true);
-                  ws.setDomStorageEnabled(true);
-                  ws.setDatabaseEnabled(true);
-                  ws.setGeolocationEnabled(true);
-                  ws.setAllowFileAccess(true);
-                  ws.setAllowContentAccess(true);
-                  ws.setLoadsImagesAutomatically(true);
-
-                  webView.setWebChromeClient(new WebChromeClient() {
-                      @Override
-                      public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback callback) {
-                          if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                              geoCallback = callback;
-                              geoOrigin = origin;
-                              ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, LOCATION_REQ);
-                          } else {
-                              callback.invoke(origin, true, false);
-                          }
-                      }
-                  });
-
-                  webView.setWebViewClient(new WebViewClient() {
-                      @Override
-                      public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                          String url = request.getUrl().toString();
-                          if (url.startsWith("https://yandex.ru/maps") || url.startsWith("https://2gis.ru") || url.startsWith("tel:") || url.startsWith("mailto:")) {
-                              Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-                              startActivity(intent);
-                              return true;
-                          }
-                          return false;
-                      }
-                  });
-
-                  webView.loadUrl("file:///android_asset/index.html");
+              Protected void onCreate(Bundle savedInstanceState) {
+                  Super.onCreate(savedInstanceState);
+                  myWebView = new WebView(this);
+                  setContentView(myWebView);
+                  WebSettings webSettings = myWebView.getSettings();
+                  webSettings.setJavaScriptEnabled(true);
+                  webSettings.setDomStorageEnabled(true);
+                  webSettings.setGeolocationEnabled(true);
+                  myWebView.setWebViewClient(new WebViewClient());
+                  myWebView.setWebChromeClient(new WebChromeClient());
+                  myWebView.loadUrl(«file:///android_asset/index.html»);
               }
-
               @Override
-              public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-                  super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-                  if (requestCode == LOCATION_REQ && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                      if (geoCallback != null) geoCallback.invoke(geoOrigin, true, false);
+              Public void onBackPressed() {
+                  If (myWebView.canGoBack()) {
+                      myWebView.goBack();
                   } else {
-                      if (geoCallback != null) geoCallback.invoke(geoOrigin, false, false);
-                  }
-              }
-
-              @Override
-              public void onBackPressed() {
-                  if (webView != null && webView.canGoBack()) {
-                      webView.goBack();
-                  } else {
-                      super.onBackPressed();
+                      Super.onBackPressed();
                   }
               }
           }
           EOF
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-version: '8.5'
+        Uses: gradle/actions/setup-gradle@v3
+        With:
+          Gradle-version: '8.4'
 
-      - name: Build Debug APK
-        run: |
-          cd Ohotnik
-          gradle assembleDebug --no-daemon
+      - name: Compile Debug APK
+        Run: gradle assembleDebug –no-daemon
 
-      - name: Upload Finished APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: OhotnikKuzbass-APK
-          path: Ohotnik/app/build/outputs/apk/debug/app-debug.apk
+      - name: Save APK Artifact
+        Uses: actions/upload-artifact@v4
+        With:
+          Name: OhotnikKuzbass-APK
+          Path: app/build/outputs/apk/debug/app-debug.apk
+
+
