@@ -1,162 +1,175 @@
-Name: Build Android APK
+name: Build Android APK
 
-On:
-  Push:
-    Branches: [ «main», «master» ]
-  Workflow_dispatch:
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
 
-Jobs:
-  Build:
-    Name: Generate APK
-    Runs-on: ubuntu-latest
+jobs:
+  build:
+    name: Build APK
+    runs-on: ubuntu-latest
 
-    Steps:
+    steps:
       - name: Checkout Code
-        Uses: actions/checkout@v4
+        uses: actions/checkout@v4
 
-      - name: Setup Java 17
-        Uses: actions/setup-java@v4
-        With:
-          Distribution: 'temurin'
-          Java-version: '17'
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
 
-      - name: Initialize Android Wrapper Project
-        Run: |
-          # Создаем структуру проекта
-          Mkdir -p app/src/main/assets app/src/main/res/values app/src/main/java/ru/repin/ohotnik
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
 
-          # Копируем наш файл приложения
-          Cp index.html app/src/main/assets/index.html
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.5'
 
-          # Настройки репозиториев
-          Cat << 'EOF' > settings.gradle
-          pluginManagement {
+      - name: Build Android Project
+        run: |
+          mkdir -p Ohotnik/app/src/main/assets
+          mkdir -p Ohotnik/app/src/main/java/ru/repin/ohotnik
+          mkdir -p Ohotnik/app/src/main/res/values
+
+          cp index.html Ohotnik/app/src/main/assets/index.html
+
+          echo "rootProject.name = 'OhotnikKuzbass'" > Ohotnik/settings.gradle
+          echo "include ':app'" >> Ohotnik/settings.gradle
+
+          cat << 'EOF' > Ohotnik/build.gradle
+          buildscript {
               repositories {
-                  gradlePluginPortal()
+                  google()
+                  mavenCentral()
+              }
+              dependencies {
+                  classpath 'com.android.tools.build:gradle:8.2.2'
+              }
+          }
+          allprojects {
+              repositories {
                   google()
                   mavenCentral()
               }
           }
-          dependencyResolutionManagement {
-              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-              repositories {
-                  google()
-                  mavenCentral()
-              }
-          }
-          rootProject.name = «OhotnikKuzbass»
-          include ':app'
           EOF
 
-          # Корневой build.gradle
-          Cat << 'EOF' > build.gradle
-          Plugins {
-              Id 'com.android.application' version '8.1.4' apply false
-          }
-          EOF
+          cat << 'EOF' > Ohotnik/app/build.gradle
+          apply plugin: 'com.android.application'
 
-          # Сборка модуля app
-          Cat << 'EOF' > app/build.gradle
-          Plugins {
-              Id 'com.android.application'
-          }
-          Android {
-              Namespace 'ru.repin.ohotnik'
+          android {
+              namespace 'ru.repin.ohotnik'
               compileSdk 34
+
               defaultConfig {
-                  applicationId «ru.repin.ohotnik»
+                  applicationId "ru.repin.ohotnik"
                   minSdk 24
                   targetSdk 34
                   versionCode 1
-                  versionName «1.0»
+                  versionName "1.0"
               }
+
               buildTypes {
                   release {
                       minifyEnabled false
                   }
+                  debug {
+                      debuggable true
+                  }
               }
+
               compileOptions {
                   sourceCompatibility JavaVersion.VERSION_17
                   targetCompatibility JavaVersion.VERSION_17
               }
           }
-          Dependencies {
-              Implementation 'androidx.appcompat:appcompat:1.6.1'
-              Implementation 'androidx.webkit:webkit:1.8.0'
+
+          dependencies {
+              implementation 'androidx.appcompat:appcompat:1.6.1'
+              implementation 'androidx.webkit:webkit:1.10.0'
           }
           EOF
 
-          # Манифест с разрешениями на геолокацию
-          Cat << 'EOF' > app/src/main/AndroidManifest.xml
-          <?xml version=»1.0» encoding=»utf-8»?>
-          <manifest xmlns:android=»http://schemas.android.com/apk/res/android»>
-              <uses-permission android:name=»android.permission.INTERNET» />
-              <uses-permission android:name=»android.permission.ACCESS_FINE_LOCATION» />
-              <uses-permission android:name=»android.permission.ACCESS_COARSE_LOCATION» />
+          cat << 'EOF' > Ohotnik/app/src/main/AndroidManifest.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <uses-permission android:name="android.permission.INTERNET" />
+              <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+              <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
               <application
-                  Android:allowBackup=»true»
-                  Android:label=»Охотник Кузбасса»
-                  Android:theme=»@style/Theme.AppCompat.NoActionBar»>
+                  android:allowBackup="true"
+                  android:label="Охотник Кузбасса"
+                  android:theme="@style/Theme.AppCompat.NoActionBar">
                   <activity
-                      Android:name=».MainActivity»
-                      Android:exported=»true»>
+                      android:name=".MainActivity"
+                      android:exported="true">
                       <intent-filter>
-                          <action android:name=»android.intent.action.MAIN» />
-                          <category android:name=»android.intent.category.LAUNCHER» />
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
                       </intent-filter>
                   </activity>
               </application>
           </manifest>
           EOF
 
-          # Java Activity
-          Cat << 'EOF' > app/src/main/java/ru/repin/ohotnik/MainActivity.java
-          Package ru.repin.ohotnik;
-          Import android.os.Bundle;
-          Import android.webkit.WebChromeClient;
-          Import android.webkit.WebSettings;
-          Import android.webkit.WebView;
-          Import android.webkit.WebViewClient;
-          Import androidx.appcompat.app.AppCompatActivity;
+          cat << 'EOF' > Ohotnik/app/src/main/res/values/styles.xml
+          <resources>
+              <style name="Theme.AppCompat.NoActionBar">
+                  <item name="android:windowNoTitle">true</item>
+                  <item name="android:windowActionBar">false</item>
+              </style>
+          </resources>
+          EOF
 
-          Public class MainActivity extends AppCompatActivity {
-              Private WebView myWebView;
+          cat << 'EOF' > Ohotnik/app/src/main/java/ru/repin/ohotnik/MainActivity.java
+          package ru.repin.ohotnik;
+
+          import android.os.Bundle;
+          import android.webkit.WebChromeClient;
+          import android.webkit.WebSettings;
+          import android.webkit.WebView;
+          import android.webkit.WebViewClient;
+          import androidx.appcompat.app.AppCompatActivity;
+
+          public class MainActivity extends AppCompatActivity {
+              private WebView webView;
+
               @Override
-              Protected void onCreate(Bundle savedInstanceState) {
-                  Super.onCreate(savedInstanceState);
-                  myWebView = new WebView(this);
-                  setContentView(myWebView);
-                  WebSettings webSettings = myWebView.getSettings();
-                  webSettings.setJavaScriptEnabled(true);
-                  webSettings.setDomStorageEnabled(true);
-                  webSettings.setGeolocationEnabled(true);
-                  myWebView.setWebViewClient(new WebViewClient());
-                  myWebView.setWebChromeClient(new WebChromeClient());
-                  myWebView.loadUrl(«file:///android_asset/index.html»);
+              protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  webView = new WebView(this);
+                  setContentView(webView);
+
+                  WebSettings s = webView.getSettings();
+                  s.setJavaScriptEnabled(true);
+                  s.setDomStorageEnabled(true);
+                  s.setGeolocationEnabled(true);
+                  s.setAllowFileAccess(true);
+
+                  webView.setWebChromeClient(new WebChromeClient());
+                  webView.setWebViewClient(new WebViewClient());
+                  webView.loadUrl("file:///android_asset/index.html");
               }
+
               @Override
-              Public void onBackPressed() {
-                  If (myWebView.canGoBack()) {
-                      myWebView.goBack();
+              public void onBackPressed() {
+                  if (webView.canGoBack()) {
+                      webView.goBack();
                   } else {
-                      Super.onBackPressed();
+                      super.onBackPressed();
                   }
               }
           }
           EOF
 
-      - name: Setup Gradle
-        Uses: gradle/actions/setup-gradle@v3
-        With:
-          Gradle-version: '8.4'
+          cd Ohotnik
+          gradle assembleDebug --no-daemon
 
-      - name: Compile Debug APK
-        Run: gradle assembleDebug –no-daemon
-
-      - name: Save APK Artifact
-        Uses: actions/upload-artifact@v4
-        With:
-          Name: OhotnikKuzbass-APK
-          Path: app/build/outputs/apk/debug/app-debug.apk
-
-
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: OhotnikKuzbass-APK
+          path: Ohotnik/app/build/outputs/apk/debug/app-debug.apk
