@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Охотник Кузбасса</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    body { background-color: #0a0d0c; color: #d1d5db; font-family: ui-sans-serif, system-ui, sans-serif; }
+    .leaflet-container { background: #0c120f !important; }
+    .tactical-card { background-color: #121815; border: 1px solid #222d26; }
+    .leaflet-control-attribution a { display: none !important; }
+    .leaflet-control-attribution { background: rgba(10, 13, 12, 0.8) !important; color: #6b7280 !important; font-size: 9px !important; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-amber-600 selection:text-black">
+
+  <header class="bg-[#0e1411] border-b border-[#233127] sticky top-0 z-50 px-4 py-3 flex justify-between items-center shadow-2xl">
+    <div class="flex items-center space-x-3">
+      <div class="w-9 h-9 rounded border border-amber-600/70 bg-amber-950/40 flex items-center justify-center font-mono font-bold text-amber-500 shadow-inner">
+        OK
+      </div>
+      <div>
+        <h1 class="text-sm font-black uppercase tracking-wider text-slate-100 flex items-center gap-2">
+          Охотник Кузбасса
+          <span class="text-[10px] bg-[#1a251f] text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-800 font-mono">STANDALONE</span>
+        </h1>
+        <p class="text-[10px] text-slate-400 font-mono tracking-tight">РЕГИОН 42 • СИСТЕМА ЛИЦЕНЗИРОВАНИЯ И ОХОТУГОДИЙ</p>
+      </div>
+    </div>
+    
+    <div class="text-right">
+      <div class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#141d18] border border-[#2e4033] rounded text-slate-300 shadow-sm">
+        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span class="text-[11px] font-mono tracking-wide text-slate-200">Создатель: <strong class="text-amber-400">Репин Владислав Сергеевич</strong></span>
+      </div>
+    </div>
+  </header>
+
+  <nav class="bg-[#101713] border-b border-[#233127] px-2 py-2 flex gap-1.5 overflow-x-auto text-xs font-mono shadow-md">
+    <button onclick="setTab('steps')" id="tab-steps" class="px-3 py-1.5 rounded bg-amber-600 text-black font-bold uppercase transition flex items-center gap-1">
+      <span>[01]</span> Маршрут (10 шагов)
+    </button>
+    <button onclick="setTab('tests')" id="tab-tests" class="px-3 py-1.5 rounded bg-[#16201a] text-slate-300 hover:text-white uppercase transition flex items-center gap-1">
+      <span>[02]</span> Охотминимум и БОО
+    </button>
+    <button onclick="setTab('calc')" id="tab-calc" class="px-3 py-1.5 rounded bg-[#16201a] text-slate-300 hover:text-white uppercase transition flex items-center gap-1">
+      <span>[03]</span> Калькулятор бюджета
+    </button>
+    <button onclick="setTab('map')" id="tab-map" class="px-3 py-1.5 rounded bg-[#16201a] text-slate-300 hover:text-white uppercase transition flex items-center gap-1">
+      <span>[04]</span> Карта Новокузнецка
+    </button>
+    <button onclick="setTab('catalog')" id="tab-catalog" class="px-3 py-1.5 rounded bg-[#16201a] text-slate-300 hover:text-white uppercase transition flex items-center gap-1">
+      <span>[05]</span> Оружие и Угодья
+    </button>
+  </nav>
+
+  <main class="flex-1 p-3 md:p-6 max-w-6xl w-full mx-auto space-y-4">
+
+    <section id="sec-steps" class="space-y-3">
+      <div class="tactical-card p-4 rounded-md shadow-md">
+        <div class="flex justify-between items-center mb-2">
+          <h2 class="font-bold uppercase tracking-wider text-amber-500 font-mono text-sm">Прогресс лицензирования (ФЗ № 150-ФЗ / № 209-ФЗ)</h2>
+          <span id="progress-val" class="text-xs font-mono text-emerald-400 font-bold">0% ГОТОВО</span>
+        </div>
+        <div class="w-full bg-[#1b251f] h-2.5 rounded overflow-hidden border border-[#26372c]">
+          <div id="progress-bar" class="bg-amber-500 h-full transition-all duration-300" style="width: 0%"></div>
+        </div>
+      </div>
+      <div id="steps-container" class="space-y-2.5"></div>
+    </section>
+
+    <section id="sec-tests" class="hidden space-y-4">
+      <div class="tactical-card p-4 rounded-md border-l-4 border-l-amber-500">
+        <h3 class="font-bold uppercase text-white font-mono text-sm">Учебный центр: Охотминимум РФ и правила БОО</h3>
+        <p class="text-xs text-slate-400 mt-1">
+          Официальные программы проверки правил безопасного обращения с оружием (ст. 13 150-ФЗ) и охотничьего минимума.
+        </p>
+      </div>
+      <div id="quiz-box" class="space-y-3"></div>
+    </section>
+
+    <section id="sec-calc" class="hidden space-y-4">
+      <div class="tactical-card p-5 rounded-md">
+        <h3 class="font-bold uppercase text-amber-500 font-mono text-sm mb-3">Ориентировочная смета расходов (Кузбасс, 2026)</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs font-mono">
+          <label class="flex items-center gap-2.5 p-3 bg-[#17201b] rounded border border-[#243328] cursor-pointer hover:border-amber-600/50 transition">
+            <input type="checkbox" id="c-med" checked onchange="calcTotal()" class="accent-amber-500 w-4 h-4">
+            <span>Медосвидетельствование (ХТИ + Психиатр + 002-О/у): <strong class="text-slate-200">6 500 ₽</strong></span>
+          </label>
+          <label class="flex items-center gap-2.5 p-3 bg-[#17201b] rounded border border-[#243328] cursor-pointer hover:border-amber-600/50 transition">
+            <input type="checkbox" id="c-edu" checked onchange="calcTotal()" class="accent-amber-500 w-4 h-4">
+            <span>Курс обучения правилам БОО и экзамен: <strong class="text-slate-200">5 500 ₽</strong></span>
+          </label>
+          <label class="flex items-center gap-2.5 p-3 bg-[#17201b] rounded border border-[#243328] cursor-pointer hover:border-amber-600/50 transition">
+            <input type="checkbox" id="c-safe" checked onchange="calcTotal()" class="accent-amber-500 w-4 h-4">
+            <span>Оружейный сейф (металл от 1.5 мм, 2 замка): <strong class="text-slate-200">5 500 ₽</strong></span>
+          </label>
+          <label class="flex items-center gap-2.5 p-3 bg-[#17201b] rounded border border-[#243328] cursor-pointer hover:border-amber-600/50 transition">
+            <input type="checkbox" id="c-lga" checked onchange="calcTotal()" class="accent-amber-500 w-4 h-4">
+            <span>Госпошлина за лицензию ЛГа: <strong class="text-slate-200">2 000 ₽</strong></span>
+          </label>
+          <label class="flex items-center gap-2.5 p-3 bg-[#17201b] rounded border border-[#243328] cursor-pointer hover:border-amber-600/50 transition">
+            <input type="checkbox" id="c-roha" checked onchange="calcTotal()" class="accent-amber-500 w-4 h-4">
+            <span>Госпошлина за бланк РОХа: <strong class="text-slate-200">500 ₽</strong></span>
+          </label>
+          <label class="flex items-center gap-2.5 p-3 bg-[#17201b] rounded border border-[#243328] cursor-pointer hover:border-amber-600/50 transition">
+            <input type="checkbox" id="c-gun" checked onchange="calcTotal()" class="accent-amber-500 w-4 h-4">
+            <span>Первое ружье (МР-27 или аналог): <strong class="text-slate-200">45 000 ₽</strong></span>
+          </label>
+        </div>
+        <div class="mt-5 pt-4 border-t border-[#233127] flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+          <span class="text-xs font-mono uppercase text-slate-400">Суммарный ориентировочный бюджет «под ключ»:</span>
+          <span id="calc-result" class="text-xl font-mono font-black text-amber-400 tracking-wide">65 000 ₽</span>
+        </div>
+      </div>
+    </section>
+
+    <section id="sec-map" class="hidden space-y-3">
+      <div class="tactical-card p-3 rounded-md">
+        <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-2 mb-2">
+          <span class="text-xs font-mono uppercase text-slate-300 font-bold">Официальные учреждения Новокузнецка</span>
+          <button onclick="locateUser()" class="px-2.5 py-1 bg-[#1a2620] hover:bg-amber-600 hover:text-black rounded text-[11px] font-mono text-amber-400 border border-amber-600/40 transition">
+            Определить позицию (GPS)
+          </button>
+        </div>
+        <div id="map" class="w-full h-80 rounded border border-[#233127]"></div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs font-mono" id="places-list"></div>
+    </section>
+
+    <section id="sec-catalog" class="hidden space-y-3">
+      <div class="tactical-card p-4 rounded-md border-l-4 border-l-amber-500">
+        <h3 class="font-bold uppercase text-amber-400 font-mono text-sm mb-1">Нормативное ограничение первых 2 лет стажа (ст. 13 150-ФЗ)</h3>
+        <p class="text-xs text-slate-300 leading-relaxed font-mono">
+          Впервые приобретающим гражданское охотничье длинноствольное оружие первые два года разрешено приобретать только ружья с количеством стволов не более двух и без магазина или барабана (МР-18, МР-27, ТОЗ-34).
+        </p>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3" id="guns-list"></div>
+    </section>
+
+  </main>
+
+  <script>
+    const STEPS_DATA = [
+      { id: 1, title: "1. Получение федерального охотничьего билета", org: "Минприроды Кузбасса / МФЦ Новокузнецка / Госуслуги", cost: "0 ₽ (Бесплатно)", time: "До 5 рабочих дней", req: "Паспорт РФ, 2 матовые фотографии 3х4 см, заявление." },
+      { id: 2, title: "2. Медицинские справки 002-О/у и 003-О/у", org: "Наркодиспансер (ул. Сеченова, 26) + Психбольница (ул. Малая, 6)", cost: "~6 500 ₽", time: "1–3 дня", req: "Строго государственные диспансеры. Анализ ХТИ. Электронные справки поступают в ЕГИСЗ." },
+      { id: 3, title: "3. Прохождение курса и экзамена по правилам БОО", org: "Лицензированный стрелковый учебный центр", cost: "~5 500 ₽", time: "1 день (6–8 часов)", req: "Паспорт, медзаключение. Теория + стрельбы в тире." },
+      { id: 4, title: "4. Покупка и установка оружейного сейфа", org: "Место постоянной регистрации", cost: "От 4 500 ₽", time: "До вызова инспектора", req: "Металлический шкаф от 1.5–2 мм с двумя замками." },
+      { id: 5, title: "5. Заявление на лицензию ЛГа через Госуслуги", org: "ОЛРР по г. Новокузнецку Управления Росгвардии", cost: "2 000 ₽ (Госпошлина)", time: "До 30 календарных дней", req: "Справка ЕГИСЗ, свидетельство БОО, охотбилет, фото сейфа." },
+      { id: 6, title: "6. Покупка ружья в оружейном магазине", org: "Оружейный магазин («Щит», пр. Октябрьский, 58)", cost: "По чеку магазина", time: "Лицензия действует 6 месяцев", req: "Паспорт РФ, оригинал лицензии ЛГа." },
+      { id: 7, title: "7. Регистрация оружия в ОЛРР Росгвардии", org: "ОЛРР Росгвардии (пр. Курако, 42 / ул. Покрышкина, 18А)", cost: "500 ₽ (Госпошлина РОХа)", time: "Строго в течение 14 дней с покупки!", req: "Осмотр оружия инспектором, сверка серийных номеров." },
+      { id: 8, title: "8. Получение разрешения серии РОХа", org: "ОЛРР Росгвардии", cost: "Включено в госпошлину", time: "До 14 дней после осмотра", req: "Право хранения, транспортирования, покупки патронов и охоты на 5 лет." }
+    ];
+
+    const PLACES = [
+      { name: "ОЛРР Росгвардии по г. Новокузнецку", lat: 53.7578, lon: 87.1194, addr: "пр. Курако, д. 42 / ул. Покрышкина, 18А", phone: "+7 (3843) 57-43-15", note: "Лицензии ЛГа, РОХа, сверка номеров" },
+      { name: "Новокузнецкий Наркодиспансер (ХТИ)", lat: 53.7661, lon: 87.1492, addr: "ул. Сеченова, д. 26", phone: "+7 (3843) 74-45-56", note: "Анализ мочи на ПАВ (ХТИ), форма 003-О/у" },
+      { name: "Новокузнецкая клиническая психбольница", lat: 53.7915, lon: 87.1951, addr: "ул. Малая, д. 6", phone: "+7 (3843) 32-23-40", note: "Освидетельствование врачом-психиатром, 002-О/у" },
+      { name: "Департамент охраны животного мира Кузбасса", lat: 53.7541, lon: 87.1352, addr: "пр. Пионерский, д. 23", phone: "+7 (3843) 45-82-10", note: "Выдача разрешений в общедоступные угодья (ОДУ)" },
+      { name: "Оружейный салон «Щит»", lat: 53.7634, lon: 87.1511, addr: "пр. Октябрьский, д. 58", phone: "+7 (3843) 77-22-33", note: "Оружие, патроны, сейфы, химия" }
+    ];
+
+    const QUESTIONS = [
+      { 
+        q: "Какое охотничье ружье по закону вправе приобрести гражданин РФ в первые 2 года владения?", 
+        options: ["Любой полуавтомат 12 калибра (МР-155)", "Двуствольное или одноствольное ружье без магазина", "Нарезной охотничий карабин 'Сайга-308'"], 
+        correct: 1, 
+        why: "Согласно ст. 13 150-ФЗ, граждане РФ первые два года вправе владеть только оружием с количеством стволов не более двух и без магазина или барабана." 
+      },
+      { 
+        q: "Какое максимальное количество патронов разрешено для транспортирования гражданином РФ без спецразрешения?", 
+        options: ["До 400 штук", "До 1 000 штук", "До 500 штук"], 
+        correct: 1, 
+        why: "По Постановлению Правительства № 814 граждане могут транспортировать до 1000 патронов и не более 5 единиц оружия на основании РОХа." 
+      },
+      { 
+        q: "В какой срок гражданин обязан зарегистрировать приобретённое в магазине оружие в ОЛРР Росгвардии?", 
+        options: ["В течение 30 дней", "В течение 14 дней", "В течение 10 дней"], 
+        correct: 1, 
+        why: "ФЗ № 150-ФЗ обязывает поставить оружие на учет и подать заявление на РОХа в течение 14 дней со дня покупки." 
+      }
+    ];
+
+    const GUNS = [
+      { name: "МР-27М (ИЖ-27)", type: "Гладкоствольное двуствольное (вертикалка)", cal: "12/76", exp: "РАЗРЕШЕНО НОВИЧКАМ (1-2 год)", price: "От 48 000 ₽", desc: "Классическое ружье Ижевского завода. Оптимальный выбор для охоты в сибирской тайге." },
+      { name: "ТОЗ-34", type: "Гладкоствольное двуствольное", cal: "12/70", exp: "РАЗРЕШЕНО НОВИЧКАМ (вторичный рынок)", price: "22 000 – 35 000 ₽", desc: "Легкое прикладистое ружье Тульского завода с отличным боем дробью." },
+      { name: "МР-155", type: "Самозарядное гладкоствольное (полуавтомат)", cal: "12/76", exp: "ТРЕБУЕТСЯ СТАЖ 2 ГОДА", price: "От 54 000 ₽", desc: "Пятизарядный полуавтомат. Доступен строго после двух лет непрерывного владения двустволкой." }
+    ];
+
+    let completedSteps = JSON.parse(localStorage.getItem('ok_steps') || '[]');
+
+    function renderSteps() {
+      const container = document.getElementById('steps-container');
+      container.innerHTML = '';
+      STEPS_DATA.forEach(s => {
+        const isDone = completedSteps.includes(s.id);
+        const card = document.createElement('div');
+        card.className = `tactical-card p-3 rounded-md transition ${isDone ? 'border-emerald-800/80 bg-[#121c15]' : ''}`;
+        card.innerHTML = `
+          <div class="flex items-start justify-between gap-3">
+            <div class="flex-1">
+              <div class="flex items-center gap-2">
+                <input type="checkbox" ${isDone ? 'checked' : ''} onchange="toggleStep(${s.id})" class="accent-amber-500 w-4 h-4 cursor-pointer">
+                <h4 class="font-bold text-xs uppercase font-mono ${isDone ? 'text-emerald-400 line-through' : 'text-slate-100'}">${s.title}</h4>
+              </div>
+              <div class="text-[11px] text-slate-400 mt-2 space-y-0.5 font-mono">
+                <p>• Инстанция: <span class="text-slate-200">${s.org}</span></p>
+                <p>• Срок: <span class="text-slate-200">${s.time}</span> | Пошлина/Затраты: <span class="text-amber-400 font-bold">${s.cost}</span></p>
+                <p class="text-slate-500 mt-1">${s.req}</p>
+              </div>
+            </div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+      updateProgress();
+    }
+
+    function toggleStep(id) {
+      if (completedSteps.includes(id)) {
+        completedSteps = completedSteps.filter(x => x !== id);
+      } else {
+        completedSteps.push(id);
+      }
+      localStorage.setItem('ok_steps', JSON.stringify(completedSteps));
+      renderSteps();
+    }
+
+    function updateProgress() {
+      const percent = Math.round((completedSteps.length / STEPS_DATA.length) * 100);
+      document.getElementById('progress-bar').style.width = percent + '%';
+      document.getElementById('progress-val').innerText = percent + '% ВЫПОЛНЕНО';
+    }
+
+    function setTab(name) {
+      ['steps', 'tests', 'calc', 'map', 'catalog'].forEach(t => {
+        document.getElementById('sec-' + t).classList.add('hidden');
+        document.getElementById('tab-' + t).className = 'px-3 py-1.5 rounded bg-[#16201a] text-slate-300 hover:text-white uppercase transition flex items-center gap-1';
+      });
+      document.getElementById('sec-' + name).classList.remove('hidden');
+      document.getElementById('tab-' + name).className = 'px-3 py-1.5 rounded bg-amber-600 text-black font-bold uppercase transition flex items-center gap-1';
+      if (name === 'map') setTimeout(() => { initMap(); }, 200);
+    }
+
+    function calcTotal() {
+      let sum = 0;
+      if (document.getElementById('c-med').checked) sum += 6500;
+      if (document.getElementById('c-edu').checked) sum += 5500;
+      if (document.getElementById('c-safe').checked) sum += 5500;
+      if (document.getElementById('c-lga').checked) sum += 2000;
+      if (document.getElementById('c-roha').checked) sum += 500;
+      if (document.getElementById('c-gun').checked) sum += 45000;
+      document.getElementById('calc-result').innerText = sum.toLocaleString('ru-RU') + ' ₽';
+    }
+
+    function renderQuizzes() {
+      const b = document.getElementById('quiz-box');
+      b.innerHTML = '';
+      QUESTIONS.forEach((q, idx) => {
+        const div = document.createElement('div');
+        div.className = "tactical-card p-4 rounded-md space-y-2.5";
+        div.innerHTML = `
+          <p class="font-bold text-xs text-slate-200 font-mono">${idx+1}. ${q.q}</p>
+          <div class="space-y-1.5">
+            ${q.options.map((opt, i) => `
+              <button onclick="checkAns(${idx}, ${i}, this)" class="w-full text-left p-2.5 rounded bg-[#17221c] hover:bg-[#203027] text-slate-300 text-xs font-mono transition border border-[#25372b]">
+                [ ] ${opt}
+              </button>
+            `).join('')}
+          </div>
+          <div id="quiz-why-${idx}" class="hidden p-2.5 rounded text-[11px] font-mono"></div>
+        `;
+        b.appendChild(div);
+      });
+    }
+
+    function checkAns(qIdx, optIdx, btn) {
+      const q = QUESTIONS[qIdx];
+      const whyBox = document.getElementById(`quiz-why-${qIdx}`);
+      whyBox.classList.remove('hidden');
+      if (optIdx === q.correct) {
+        btn.classList.add('bg-emerald-950', 'border-emerald-600', 'text-emerald-300', 'font-bold');
+        whyBox.className = 'p-2.5 rounded text-[11px] font-mono bg-emerald-950/70 border border-emerald-800 text-emerald-300';
+        whyBox.innerText = 'ВЕРНО: ' + q.why;
+      } else {
+        btn.classList.add('bg-red-950', 'border-red-600', 'text-red-300');
+        whyBox.className = 'p-2.5 rounded text-[11px] font-mono bg-red-950/70 border border-red-800 text-red-300';
+        whyBox.innerText = 'НЕВЕРНО: ' + q.why;
+      }
+    }
+
+    let mapInstance = null;
+    function initMap() {
+      if (mapInstance) { mapInstance.invalidateSize(); return; }
+      mapInstance = L.map('map', { attributionControl: false }).setView([53.7578, 87.135], 12);
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(mapInstance);
+
+      const list = document.getElementById('places-list');
+      list.innerHTML = '';
+
+      PLACES.forEach(p => {
+        const marker = L.circleMarker([p.lat, p.lon], { radius: 7, fillColor: "#d97706", color: "#ffffff", weight: 1.5, fillOpacity: 0.95 }).addTo(mapInstance);
+        marker.bindPopup(`<b>${p.name}</b><br><span style="font-size:11px">${p.addr}</span>`);
+
+        const card = document.createElement('div');
+        card.className = "tactical-card p-3 rounded border border-[#233127]";
+        card.innerHTML = `
+          <strong class="text-amber-400 font-bold">${p.name}</strong>
+          <p class="text-slate-300 mt-1">${p.addr}</p>
+          <p class="text-slate-500">${p.phone} • ${p.note}</p>
+          <div class="mt-2.5 flex gap-2">
+            <a href="https://2gis.ru/novokuznetsk/search/${encodeURIComponent(p.name + ' ' + p.addr)}" target="_blank" class="px-2.5 py-1 bg-[#1b2620] hover:bg-emerald-900 text-[10px] text-emerald-400 rounded border border-emerald-800">2ГИС</a>
+            <a href="https://yandex.ru/maps/?text=${encodeURIComponent(p.addr)}" target="_blank" class="px-2.5 py-1 bg-[#1b2620] hover:bg-amber-900 text-[10px] text-amber-400 rounded border border-amber-800">Яндекс Карты</a>
+          </div>
+        `;
+        list.appendChild(card);
+      });
+    }
+
+    function locateUser() {
+      if (!navigator.geolocation) { alert('Геолокация не поддерживается устройством.'); return; }
+      navigator.geolocation.getCurrentPosition(pos => {
+        const { latitude, longitude } = pos.coords;
+        if (mapInstance) {
+          mapInstance.setView([latitude, longitude], 14);
+          L.circleMarker([latitude, longitude], { radius: 9, fillColor: "#10b981", color: "#ffffff", weight: 2, fillOpacity: 1 }).addTo(mapInstance).bindPopup("Вы находитесь здесь").openPopup();
+        }
+      }, () => alert('Не удалось получить доступ к GPS. Проверьте разрешения в браузере.'));
+    }
+
+    function renderGuns() {
+      const c = document.getElementById('guns-list');
+      c.innerHTML = '';
+      GUNS.forEach(g => {
+        const d = document.createElement('div');
+        d.className = 'tactical-card p-3.5 rounded border border-[#222d26] space-y-1.5 font-mono text-xs';
+        d.innerHTML = `
+          <div class="flex justify-between items-start">
+            <h4 class="font-bold text-amber-400 text-sm">${g.name}</h4>
+            <span class="text-emerald-400 font-bold">${g.price}</span>
+          </div>
+          <p class="text-slate-400">${g.type} • Калибр: ${g.cal}</p>
+          <p class="text-amber-500/90 text-[11px] font-bold">[${g.exp}]</p>
+          <p class="text-slate-400 text-[11px] pt-1">${g.desc}</p>
+        `;
+        c.appendChild(d);
+      });
+    }
+
+    renderSteps();
+    renderQuizzes();
+    renderGuns();
+  </script>
+</body>
+</html>
