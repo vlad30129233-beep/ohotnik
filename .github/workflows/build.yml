@@ -28,26 +28,41 @@ jobs:
           mkdir -p OhotnikKuzbass/app/src/main/java/ru/repin/ohotnik
           mkdir -p OhotnikKuzbass/app/src/main/res/values
 
-          # Копируем файл веб-приложения
+          # Переносим HTML-код приложения
           cp index.html OhotnikKuzbass/app/src/main/assets/index.html
 
+          # settings.gradle
           cat << 'EOF' > OhotnikKuzbass/settings.gradle
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
           rootProject.name = "OhotnikKuzbass"
           include ':app'
           EOF
 
+          # Корневой build.gradle
           cat << 'EOF' > OhotnikKuzbass/build.gradle
-          buildscript {
-              repositories { google(); mavenCentral() }
-              dependencies { classpath 'com.android.tools.build:gradle:8.2.2' }
-          }
-          allprojects {
-              repositories { google(); mavenCentral() }
+          plugins {
+              id 'com.android.application' version '8.2.2' apply false
           }
           EOF
 
+          # Модульный app/build.gradle
           cat << 'EOF' > OhotnikKuzbass/app/build.gradle
-          plugins { id 'com.android.application' }
+          plugins {
+              id 'com.android.application'
+          }
           android {
               namespace 'ru.repin.ohotnik'
               compileSdk 34
@@ -73,6 +88,7 @@ jobs:
           }
           EOF
 
+          # AndroidManifest.xml
           cat << 'EOF' > OhotnikKuzbass/app/src/main/AndroidManifest.xml
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
@@ -97,6 +113,7 @@ jobs:
           </manifest>
           EOF
 
+          # Стили
           cat << 'EOF' > OhotnikKuzbass/app/src/main/res/values/styles.xml
           <resources>
               <style name="Theme.OhotnikKuzbass" parent="Theme.AppCompat.NoActionBar">
@@ -107,6 +124,7 @@ jobs:
           </resources>
           EOF
 
+          # Java-обёртка
           cat << 'EOF' > OhotnikKuzbass/app/src/main/java/ru/repin/ohotnik/MainActivity.java
           package ru.repin.ohotnik;
 
@@ -199,12 +217,15 @@ jobs:
           }
           EOF
 
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.5'
+
       - name: Build Debug APK
         run: |
           cd OhotnikKuzbass
-          gradle wrapper
-          chmod +x gradlew
-          ./gradlew assembleDebug
+          gradle assembleDebug --no-daemon
 
       - name: Upload Finished APK
         uses: actions/upload-artifact@v4
